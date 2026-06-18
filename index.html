@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bulk Email Send</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        * { margin:0; padding:0; box-sizing:border-box; font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif; }
+        body { background:#f0f2f5; min-height:100vh; display:flex; justify-content:center; align-items:flex-start; padding:20px; color:#333; }
+        .container { width:100%; max-width:1300px; background:#fff; border-radius:12px; box-shadow:0 2px 12px rgba(0,0,0,.08); overflow:hidden; margin-top:10px; }
+        header { background:linear-gradient(135deg,#2563eb,#1d4ed8); color:#fff; padding:20px 30px; display:flex; align-items:center; justify-content:space-between; }
+        header h1 { font-size:24px; font-weight:700; display:flex; align-items:center; gap:10px; }
+        header h1 i { font-size:28px; }
+        .dashboard-content { display:flex; flex-wrap:wrap; }
+        .input-section { flex:1.2; min-width:380px; padding:25px 30px; border-right:1px solid #e5e7eb; }
+        .data-section { flex:1; min-width:320px; padding:25px 30px; }
+        .section-title { font-size:18px; font-weight:600; color:#1f2937; margin-bottom:20px; padding-bottom:10px; border-bottom:2px solid #2563eb; display:flex; align-items:center; gap:8px; }
+        .form-group { margin-bottom:16px; }
+        .form-group label { display:block; margin-bottom:6px; font-weight:600; font-size:14px; color:#374151; }
+        .form-group label i { width:18px; color:#2563eb; margin-right:4px; }
+        input, textarea { width:100%; padding:10px 14px; border:1px solid #d1d5db; border-radius:6px; font-size:14px; transition:border .2s,box-shadow .2s; background:#fff; color:#333; }
+        input:focus, textarea:focus { outline:none; border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,.1); }
+        textarea { min-height:100px; resize:vertical; }
+        .tag-row { display:flex; gap:8px; align-items:stretch; flex-wrap:wrap; }
+        .tag-row input { flex:1; min-width:180px; }
+        .btn-add { padding:10px 16px; background:#2563eb; color:#fff; border:none; border-radius:6px; cursor:pointer; font-size:16px; transition:background .2s; white-space:nowrap; display:flex; align-items:center; gap:6px; }
+        .btn-add:hover { background:#1d4ed8; }
+        .tag-list { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; min-height:28px; }
+        .tag { display:inline-flex; align-items:center; gap:6px; background:#e8f0fe; color:#1d4ed8; padding:4px 10px; border-radius:16px; font-size:13px; border:1px solid #c7d9f7; }
+        .tag .x { cursor:pointer; color:#ef4444; font-size:12px; }
+        .tag .x:hover { color:#dc2626; }
+        .button-group { display:flex; flex-wrap:wrap; gap:8px; margin-top:20px; }
+        .button-group button, .toolbar button { padding:10px 18px; border:none; border-radius:6px; cursor:pointer; font-weight:600; font-size:14px; transition:all .2s; display:flex; align-items:center; gap:6px; }
+        .button-group button:hover, .toolbar button:hover { transform:translateY(-1px); box-shadow:0 4px 12px rgba(0,0,0,.1); }
+        .btn-save  { background:#10b981; color:#fff; } .btn-save:hover  { background:#059669; }
+        .btn-update { background:#2563eb; color:#fff; } .btn-update:hover { background:#1d4ed8; }
+        .btn-delete { background:#ef4444; color:#fff; } .btn-delete:hover { background:#dc2626; }
+        .btn-cancel { background:#6b7280; color:#fff; } .btn-cancel:hover { background:#4b5563; }
+        .btn-send   { background:#8b5cf6; color:#fff; } .btn-send:hover   { background:#7c3aed; }
+        .data-table { width:100%; border-collapse:collapse; margin-top:12px; font-size:14px; }
+        .data-table th, .data-table td { padding:10px 12px; text-align:left; border-bottom:1px solid #e5e7eb; }
+        .data-table th { background:#f9fafb; color:#374151; font-weight:600; font-size:13px; }
+        .data-table tr:hover { background:#f3f4f6; }
+        .empty-msg { text-align:center; padding:30px 12px; color:#9ca3af; }
+        .action-cell { display:flex; gap:6px; }
+        .action-btn { padding:5px 9px; font-size:12px; border-radius:4px; }
+        .sr-no { font-weight:600; color:#6b7280; width:40px; }
+        .footer { text-align:center; padding:14px 20px; font-size:13px; color:#6b7280; border-top:1px solid #e5e7eb; background:#f9fafb; }
+        .footer span { color:#2563eb; font-weight:600; }
+        .toolbar { display:flex; gap:8px; margin-bottom:12px; }
+        .notification { position:fixed; top:20px; right:20px; padding:14px 20px; border-radius:8px; color:#fff; font-weight:600; font-size:14px; opacity:0; transform:translateX(100%); transition:all .3s; z-index:1000; box-shadow:0 4px 20px rgba(0,0,0,.15); }
+        .notification.show { opacity:1; transform:translateX(0); }
+        .notification.success { background:#10b981; }
+        .notification.error   { background:#ef4444; }
+        .notification.info    { background:#2563eb; }
+        @media(max-width:768px) { .input-section { border-right:none; border-bottom:1px solid #e5e7eb; } }
+    </style>
+</head>
+<body>
+<div class="container">
+    <header>
+        <h1><i class="fas fa-envelope-open-text"></i> Bulk Email Send</h1>
+        <span style="font-size:13px;opacity:.9"><i class="fas fa-paper-plane"></i> Outlook Bulk Sender</span>
+    </header>
+    <div class="dashboard-content">
+        <div class="input-section">
+            <div class="section-title"><i class="fas fa-pen"></i> Compose Email</div>
+
+            <div class="form-group">
+                <label><i class="fas fa-envelope"></i> From <span style="font-weight:400;color:#6b7280">(supports ; separated like Outlook)</span></label>
+                <div class="tag-row">
+                        <input type="text" id="fromInput" placeholder="a@email.com;b@email.com">
+                    <button type="button" class="btn-add" id="addFromBtn"><i class="fas fa-plus"></i> Add</button>
+                </div>
+                <div class="tag-list" id="fromTags"></div>
+            </div>
+
+            <div class="form-group">
+                <label><i class="fas fa-arrow-right"></i> To</label>
+                <input type="text" id="toInput" placeholder="recipient@example.com">
+            </div>
+
+            <div class="form-group">
+                <label><i class="fas fa-user-friends"></i> CC <span style="font-weight:400;color:#6b7280">(supports ; separated like Outlook)</span></label>
+                <div class="tag-row">
+                        <input type="text" id="ccInput" placeholder="a@email.com;b@email.com">
+                    <button type="button" class="btn-add" id="addCcBtn"><i class="fas fa-plus"></i> Add</button>
+                </div>
+                <div class="tag-list" id="ccTags"></div>
+            </div>
+
+            <div class="form-group">
+                <label><i class="fas fa-eye-slash"></i> BCC <span style="font-weight:400;color:#6b7280">(supports ; separated like Outlook)</span></label>
+                <div class="tag-row">
+                        <input type="text" id="bccInput" placeholder="a@email.com;b@email.com">
+                    <button type="button" class="btn-add" id="addBccBtn"><i class="fas fa-plus"></i> Add</button>
+                </div>
+                <div class="tag-list" id="bccTags"></div>
+            </div>
+
+            <div class="form-group">
+                <label><i class="fas fa-tag"></i> Subject</label>
+                <input type="text" id="subjectInput" placeholder="Email subject">
+            </div>
+
+            <div class="form-group">
+                <label><i class="fas fa-align-left"></i> Body</label>
+                <textarea id="bodyInput" placeholder="Write your email content here..."></textarea>
+            </div>
+
+            <div class="button-group">
+                <button type="button" class="btn-save" id="saveBtn"><i class="fas fa-save"></i> Save</button>
+                <button type="button" class="btn-update" id="updateBtn"><i class="fas fa-edit"></i> Update</button>
+                <button type="button" class="btn-delete" id="deleteBtn"><i class="fas fa-trash"></i> Delete</button>
+                <button type="button" class="btn-cancel" id="cancelBtn"><i class="fas fa-times"></i> Cancel</button>
+                <button type="button" class="btn-send" id="sendBtn"><i class="fas fa-paper-plane"></i> Send</button>
+            </div>
+        </div>
+
+        <div class="data-section">
+            <div class="section-title"><i class="fas fa-list"></i> Saved Emails</div>
+            <div class="toolbar">
+                <button type="button" class="btn-delete" id="deleteSelectedBtn" style="font-size:13px"><i class="fas fa-trash"></i> Delete Selected</button>
+                <button type="button" class="btn-cancel" id="clearAllBtn" style="font-size:13px"><i class="fas fa-trash-alt"></i> Clear All</button>
+                <button type="button" class="btn-save" id="exportBtn" style="font-size:13px"><i class="fas fa-file-excel"></i> Export to Excel</button>
+                <button type="button" class="btn-send" id="bulkSendBtn" style="font-size:13px"><i class="fas fa-paper-plane"></i> Send All via Outlook</button>
+            </div>
+            <div style="background:#f0f7ff;border:1px solid #bfdbfe;border-radius:8px;padding:12px 16px;font-size:12px;color:#1e40af;margin-bottom:12px;line-height:1.6">
+                <b>How to use Send All via Outlook:</b><br>
+                1. Click button above → downloads Excel + VBA Macro file<br>
+                2. Open Outlook → press <b>Alt+F11</b> (VBA Editor)<br>
+                3. Menu → <b>File → Import File</b> → select <b>SendBulkEmails.bas</b><br>
+                4. Press <b>F5</b> or click <b>Run</b> → select the Excel file → Done!
+            </div>
+            <div style="overflow-x:auto">
+                <table class="data-table">
+                    <thead><tr>
+                        <th style="width:36px"><input type="checkbox" id="selectAll"></th>
+                        <th style="width:44px">#</th>
+                        <th>From</th>
+                        <th>To</th>
+                        <th>CC</th>
+                        <th>BCC</th>
+                        <th>Subject</th>
+                        <th style="width:80px">Actions</th>
+                    </tr></thead>
+                    <tbody id="tableBody"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+    <div class="footer">Powered by <span>Zn-Developer</span></div>
+</div>
+
+<div class="notification" id="notif"></div>
+
+<script>
+(function(){
+    var fromEmails = JSON.parse(localStorage.getItem('beFrom')) || [];
+    var ccEmails   = JSON.parse(localStorage.getItem('beCc'))   || [];
+    var bccEmails  = JSON.parse(localStorage.getItem('beBcc'))  || [];
+    var entries    = JSON.parse(localStorage.getItem('beList')) || [];
+    var editId = null;
+
+    var fromInput  = document.getElementById('fromInput');
+    var ccInput    = document.getElementById('ccInput');
+    var bccInput   = document.getElementById('bccInput');
+    var toInput    = document.getElementById('toInput');
+    var subjectIn  = document.getElementById('subjectInput');
+    var bodyIn     = document.getElementById('bodyInput');
+
+    function saveFrom() { localStorage.setItem('beFrom', JSON.stringify(fromEmails)); }
+    function saveCc()   { localStorage.setItem('beCc',   JSON.stringify(ccEmails)); }
+    function saveBcc()  { localStorage.setItem('beBcc',  JSON.stringify(bccEmails)); }
+    function saveList() { localStorage.setItem('beList', JSON.stringify(entries)); }
+
+    function showNotif(msg, type) {
+        var n = document.getElementById('notif');
+        n.textContent = msg;
+        n.className = 'notification show ' + type;
+        setTimeout(function(){ n.className = 'notification ' + type; }, 3000);
+    }
+
+    function isValidEmail(e) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e); }
+
+    // Add multiple emails (supports ; separated like Outlook)
+    function addMultipleEmails(input, arr, saveFn, drawFn) {
+        var raw = input.value.trim();
+        if (!raw) return;
+        var parts = raw.split(/;/);
+        var added = 0, skipped = 0, invalid = 0;
+        for (var i = 0; i < parts.length; i++) {
+            var v = parts[i].trim();
+            if (!v) continue;
+            if (!isValidEmail(v)) { invalid++; continue; }
+            if (arr.indexOf(v) !== -1) { skipped++; continue; }
+            arr.push(v);
+            added++;
+        }
+        saveFn();
+        drawFn();
+        input.value = '';
+        input.focus();
+        var msg = '';
+        if (added > 0) msg += added + ' added';
+        if (skipped > 0) msg += (msg ? ', ' : '') + skipped + ' duplicate(s) skipped';
+        if (invalid > 0) msg += (msg ? ', ' : '') + invalid + ' invalid';
+        if (msg) showNotif(msg, added > 0 ? 'success' : 'info');
+    }
+
+    // ===== FROM TAGS =====
+    function drawFromTags() {
+        var c = document.getElementById('fromTags');
+        c.innerHTML = '';
+        for (var i = 0; i < fromEmails.length; i++) {
+            var s = document.createElement('span');
+            s.className = 'tag';
+            s.innerHTML = fromEmails[i] + ' <span class="x" data-i="' + i + '"><i class="fas fa-times"></i></span>';
+            c.appendChild(s);
+        }
+        var btns = c.querySelectorAll('.x');
+        for (var j = 0; j < btns.length; j++) {
+            btns[j].onclick = function() {
+                fromEmails.splice(parseInt(this.getAttribute('data-i')), 1);
+                saveFrom();
+                drawFromTags();
+            };
+        }
+    }
+
+    document.getElementById('addFromBtn').onclick = function() {
+        addMultipleEmails(fromInput, fromEmails, saveFrom, drawFromTags);
+    };
+    fromInput.onkeydown = function(e) { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('addFromBtn').click(); } };
+
+    // ===== CC TAGS =====
+    function drawCcTags() {
+        var c = document.getElementById('ccTags');
+        c.innerHTML = '';
+        for (var i = 0; i < ccEmails.length; i++) {
+            var s = document.createElement('span');
+            s.className = 'tag';
+            s.innerHTML = ccEmails[i] + ' <span class="x" data-i="' + i + '"><i class="fas fa-times"></i></span>';
+            c.appendChild(s);
+        }
+        var btns = c.querySelectorAll('.x');
+        for (var j = 0; j < btns.length; j++) {
+            btns[j].onclick = function() {
+                ccEmails.splice(parseInt(this.getAttribute('data-i')), 1);
+                saveCc();
+                drawCcTags();
+            };
+        }
+    }
+
+    document.getElementById('addCcBtn').onclick = function() {
+        addMultipleEmails(ccInput, ccEmails, saveCc, drawCcTags);
+    };
+    ccInput.onkeydown = function(e) { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('addCcBtn').click(); } };
+
+    // ===== BCC TAGS =====
+    function drawBccTags() {
+        var c = document.getElementById('bccTags');
+        c.innerHTML = '';
+        for (var i = 0; i < bccEmails.length; i++) {
+            var s = document.createElement('span');
+            s.className = 'tag';
+            s.innerHTML = bccEmails[i] + ' <span class="x" data-i="' + i + '"><i class="fas fa-times"></i></span>';
+            c.appendChild(s);
+        }
+        var btns = c.querySelectorAll('.x');
+        for (var j = 0; j < btns.length; j++) {
+            btns[j].onclick = function() {
+                bccEmails.splice(parseInt(this.getAttribute('data-i')), 1);
+                saveBcc();
+                drawBccTags();
+            };
+        }
+    }
+
+    document.getElementById('addBccBtn').onclick = function() {
+        addMultipleEmails(bccInput, bccEmails, saveBcc, drawBccTags);
+    };
+    bccInput.onkeydown = function(e) { if (e.key === 'Enter') { e.preventDefault(); document.getElementById('addBccBtn').click(); } };
+
+    // ===== DRAW ALL TAGS =====
+    drawFromTags();
+    drawCcTags();
+    drawBccTags();
+
+    // ===== FORM HELPERS =====
+    function getFormData() {
+        return {
+            id: editId || Date.now().toString(),
+            from: fromEmails.slice(),
+            cc: ccEmails.slice(),
+            bcc: bccEmails.slice(),
+            to: toInput.value.trim(),
+            subject: subjectIn.value.trim(),
+            body: bodyIn.value.trim()
+        };
+    }
+
+    function clearForm() {
+        toInput.value = '';
+        subjectIn.value = '';
+        bodyIn.value = '';
+        editId = null;
+    }
+
+    function validate() {
+        if (fromEmails.length === 0) { showNotif('Add at least one From email', 'error'); return false; }
+        if (!toInput.value.trim()) { showNotif('Enter a To address', 'error'); return false; }
+        if (!subjectIn.value.trim()) { showNotif('Enter a subject', 'error'); return false; }
+        if (!bodyIn.value.trim()) { showNotif('Enter a body', 'error'); return false; }
+        return true;
+    }
+
+    // ===== TABLE =====
+    function drawTable() {
+        var tb = document.getElementById('tableBody');
+        tb.innerHTML = '';
+        document.getElementById('selectAll').checked = false;
+        if (entries.length === 0) {
+            tb.innerHTML = '<tr><td colspan="8" class="empty-msg">No emails saved yet</td></tr>';
+            return;
+        }
+        for (var i = 0; i < entries.length; i++) {
+            var e = entries[i];
+            var fromStr = e.from ? e.from.join('; ') : '';
+            var ccStr = e.cc && e.cc.length ? e.cc.join('; ') : '-';
+            var bccStr = e.bcc && e.bcc.length ? e.bcc.join('; ') : '-';
+            var tr = document.createElement('tr');
+            tr.innerHTML =
+                '<td><input type="checkbox" class="rcb" data-id="' + e.id + '"></td>' +
+                '<td class="sr-no">' + (i + 1) + '</td>' +
+                '<td title="' + fromStr + '">' + (fromStr.length > 20 ? fromStr.substring(0, 20) + '...' : fromStr) + '</td>' +
+                '<td>' + (e.to || '') + '</td>' +
+                '<td title="' + ccStr + '">' + (ccStr.length > 15 ? ccStr.substring(0, 15) + '...' : ccStr) + '</td>' +
+                '<td title="' + bccStr + '">' + (bccStr.length > 15 ? bccStr.substring(0, 15) + '...' : bccStr) + '</td>' +
+                '<td title="' + e.subject + '">' + (e.subject.length > 20 ? e.subject.substring(0, 20) + '...' : e.subject) + '</td>' +
+                '<td class="action-cell">' +
+                    '<button type="button" class="action-btn btn-update do-edit" data-id="' + e.id + '"><i class="fas fa-edit"></i></button> ' +
+                    '<button type="button" class="action-btn btn-delete do-del" data-id="' + e.id + '"><i class="fas fa-trash"></i></button>' +
+                '</td>';
+            tb.appendChild(tr);
+        }
+
+        var edits = tb.querySelectorAll('.do-edit');
+        for (var j = 0; j < edits.length; j++) {
+            edits[j].onclick = function() {
+                var id = this.getAttribute('data-id');
+                for (var k = 0; k < entries.length; k++) {
+                    if (entries[k].id === id) {
+                        var en = entries[k];
+                        toInput.value = en.to || '';
+                        subjectIn.value = en.subject || '';
+                        bodyIn.value = en.body || '';
+                        editId = id;
+                        showNotif('Entry loaded for editing', 'info');
+                        return;
+                    }
+                }
+            };
+        }
+
+        var dels = tb.querySelectorAll('.do-del');
+        for (var d = 0; d < dels.length; d++) {
+            dels[d].onclick = function() {
+                var id = this.getAttribute('data-id');
+                entries = entries.filter(function(x){ return x.id !== id; });
+                saveList();
+                drawTable();
+                if (editId === id) clearForm();
+                showNotif('Entry deleted', 'success');
+            };
+        }
+
+        var cbs = tb.querySelectorAll('.rcb');
+        for (var c = 0; c < cbs.length; c++) {
+            cbs[c].onchange = function() {
+                var all = tb.querySelectorAll('.rcb');
+                var chk = tb.querySelectorAll('.rcb:checked');
+                document.getElementById('selectAll').checked = all.length > 0 && all.length === chk.length;
+            };
+        }
+    }
+
+    document.getElementById('selectAll').onchange = function() {
+        var cbs = document.getElementById('tableBody').querySelectorAll('.rcb');
+        for (var i = 0; i < cbs.length; i++) cbs[i].checked = this.checked;
+    };
+
+    // ===== BUTTONS =====
+    document.getElementById('saveBtn').onclick = function() {
+        if (!validate()) return;
+        entries.push(getFormData());
+        saveList();
+        drawTable();
+        clearForm();
+        showNotif('Email saved!', 'success');
+    };
+
+    document.getElementById('updateBtn').onclick = function() {
+        if (!editId) { showNotif('No entry selected', 'error'); return; }
+        if (!validate()) return;
+        var d = getFormData();
+        for (var i = 0; i < entries.length; i++) {
+            if (entries[i].id === editId) { entries[i] = d; break; }
+        }
+        saveList();
+        drawTable();
+        clearForm();
+        showNotif('Email updated!', 'success');
+    };
+
+    document.getElementById('deleteBtn').onclick = function() {
+        var cbs = document.querySelectorAll('.rcb:checked');
+        if (cbs.length === 0) { showNotif('No records selected', 'error'); return; }
+        var ids = [];
+        for (var i = 0; i < cbs.length; i++) ids.push(cbs[i].getAttribute('data-id'));
+        entries = entries.filter(function(x){ return ids.indexOf(x.id) === -1; });
+        saveList();
+        drawTable();
+        if (ids.indexOf(editId) !== -1) clearForm();
+        showNotif(ids.length + ' deleted', 'success');
+    };
+
+    document.getElementById('deleteSelectedBtn').onclick = function() { document.getElementById('deleteBtn').click(); };
+
+    document.getElementById('clearAllBtn').onclick = function() {
+        if (entries.length === 0) { showNotif('Nothing to clear', 'info'); return; }
+        if (!confirm('Delete ALL saved entries?')) return;
+        entries = [];
+        saveList();
+        drawTable();
+        clearForm();
+        showNotif('All cleared', 'success');
+    };
+
+    document.getElementById('cancelBtn').onclick = function() {
+        clearForm();
+        showNotif('Cancelled', 'info');
+    };
+
+    document.getElementById('sendBtn').onclick = function() {
+        if (!validate()) return;
+        var d = getFormData();
+        showNotif('Email sent! (Simulated)', 'success');
+        console.log('From:', d.from.join('; '));
+        console.log('To:', d.to);
+        console.log('CC:', d.cc.join('; '));
+        console.log('BCC:', d.bcc.join('; '));
+        console.log('Subject:', d.subject);
+        console.log('Body:', d.body);
+    };
+
+    // ===== EXPORT TO EXCEL =====
+    document.getElementById('exportBtn').onclick = function() {
+        if (entries.length === 0) { showNotif('No saved emails to export', 'error'); return; }
+
+        var data = [['From', 'To', 'CC', 'BCC', 'Subject', 'Body']];
+        for (var i = 0; i < entries.length; i++) {
+            var e = entries[i];
+            data.push([
+                e.from ? e.from.join('; ') : '',
+                e.to || '',
+                e.cc && e.cc.length ? e.cc.join('; ') : '',
+                e.bcc && e.bcc.length ? e.bcc.join('; ') : '',
+                e.subject || '',
+                e.body || ''
+            ]);
+        }
+
+        var ws = XLSX.utils.aoa_to_sheet(data);
+        ws['!cols'] = [{wch:30},{wch:30},{wch:30},{wch:30},{wch:40},{wch:60}];
+        var wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Emails');
+        XLSX.writeFile(wb, 'BulkEmailList.xlsx');
+
+        showNotif('Exported ' + entries.length + ' email(s) to BulkEmailList.xlsx', 'success');
+    };
+
+    // ===== SEND ALL VIA OUTLOOK (VBA Macro) =====
+    document.getElementById('bulkSendBtn').onclick = function() {
+        if (entries.length === 0) { showNotif('No saved emails to send', 'error'); return; }
+        if (!confirm('Send ' + entries.length + ' email(s) via Outlook?\n\n1. Excel file will be exported\n2. VBA Macro file will be downloaded\n3. Import macro into Outlook and run it')) return;
+
+        // Export Excel first
+        var data = [['From', 'To', 'CC', 'BCC', 'Subject', 'Body']];
+        for (var i = 0; i < entries.length; i++) {
+            var e = entries[i];
+            data.push([
+                e.from ? e.from.join('; ') : '',
+                e.to || '',
+                e.cc && e.cc.length ? e.cc.join('; ') : '',
+                e.bcc && e.bcc.length ? e.bcc.join('; ') : '',
+                e.subject || '',
+                e.body || ''
+            ]);
+        }
+        var ws = XLSX.utils.aoa_to_sheet(data);
+        ws['!cols'] = [{wch:30},{wch:30},{wch:30},{wch:30},{wch:40},{wch:60}];
+        var wb = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, ws, 'Emails');
+        XLSX.writeFile(wb, 'BulkEmailList.xlsx');
+
+        // Generate VBA Macro
+        var vba = '';
+        vba += 'Attribute VB_Name = "BulkEmailModule"\n';
+        vba += "Option Explicit\n\n";
+        vba += "Sub SendBulkEmails()\n";
+        vba += "    Dim xlApp As Object\n";
+        vba += "    Dim xlWB As Object\n";
+        vba += "    Dim xlWS As Object\n";
+        vba += "    Dim mail As Object\n";
+        vba += "    Dim fso As Object\n";
+        vba += "    Dim wsh As Object\n";
+        vba += "    Dim acct As Object\n";
+        vba += "    Dim rowCount As Long\n";
+        vba += "    Dim r As Long\n";
+        vba += "    Dim sentCount As Long\n";
+        vba += "    Dim failCount As Long\n";
+        vba += "    Dim failMsg As String\n";
+        vba += "    Dim filePath As String\n";
+        vba += "    Dim downloadsPath As String\n";
+        vba += "    Dim fromAddr As String\n";
+        vba += "    Dim foundAcct As Boolean\n\n";
+        vba += "    Set fso = CreateObject(\"Scripting.FileSystemObject\")\n";
+        vba += "    Set wsh = CreateObject(\"WScript.Shell\")\n\n";
+        vba += "    downloadsPath = wsh.SpecialFolders(\"Downloads\") & \"\\BulkEmailList.xlsx\"\n\n";
+        vba += "    If fso.FileExists(downloadsPath) Then\n";
+        vba += "        filePath = downloadsPath\n";
+        vba += "    Else\n";
+        vba += "        filePath = InputBox(\"BulkEmailList.xlsx not found in Downloads.\" & vbCrLf & vbCrLf & \"Enter full path to the Excel file:\", \"Select Excel File\", downloadsPath)\n";
+        vba += "        If filePath = \"\" Then\n";
+        vba += "            MsgBox \"Cancelled.\", vbInformation\n";
+        vba += "            Exit Sub\n";
+        vba += "        End If\n";
+        vba += "        If Not fso.FileExists(filePath) Then\n";
+        vba += "            MsgBox \"File not found:\" & vbCrLf & filePath, vbCritical, \"Error\"\n";
+        vba += "            Exit Sub\n";
+        vba += "        End If\n";
+        vba += "    End If\n\n";
+        vba += "    Set xlApp = CreateObject(\"Excel.Application\")\n";
+        vba += "    xlApp.Visible = False\n";
+        vba += "    Set xlWB = xlApp.Workbooks.Open(filePath)\n";
+        vba += "    Set xlWS = xlWB.Sheets(1)\n";
+        vba += "    rowCount = xlWS.UsedRange.Rows.Count\n\n";
+        vba += "    sentCount = 0\n";
+        vba += "    failCount = 0\n";
+        vba += "    failMsg = \"\"\n\n";
+        vba += "    For r = 2 To rowCount\n";
+        vba += "        On Error Resume Next\n";
+        vba += "        Set mail = Application.CreateItem(0)\n";
+        vba += "        fromAddr = Trim(CStr(xlWS.Cells(r, 1).Value))\n";
+        vba += "        mail.To = Trim(CStr(xlWS.Cells(r, 2).Value))\n";
+        vba += "        If Trim(CStr(xlWS.Cells(r, 3).Value)) <> \"\" Then mail.CC = Trim(CStr(xlWS.Cells(r, 3).Value))\n";
+        vba += "        If Trim(CStr(xlWS.Cells(r, 4).Value)) <> \"\" Then mail.BCC = Trim(CStr(xlWS.Cells(r, 4).Value))\n";
+        vba += "        mail.Subject = Trim(CStr(xlWS.Cells(r, 5).Value))\n";
+        vba += "        mail.Body = CStr(xlWS.Cells(r, 6).Value)\n";
+        vba += "        foundAcct = False\n";
+        vba += "        If fromAddr <> \"\" Then\n";
+        vba += "            For Each acct In Application.Session.Accounts\n";
+        vba += "                If LCase(acct.SmtpAddress) = LCase(fromAddr) Then\n";
+        vba += "                    Set mail.SendUsingAccount = acct\n";
+        vba += "                    foundAcct = True\n";
+        vba += "                    Exit For\n";
+        vba += "                End If\n";
+        vba += "            Next\n";
+        vba += "        End If\n";
+        vba += "        If fromAddr <> \"\" And Not foundAcct Then\n";
+        vba += "            failCount = failCount + 1\n";
+        vba += "            failMsg = failMsg & \"Row \" & r & \": Account '\" & fromAddr & \"' not found in Outlook\" & vbCrLf\n";
+        vba += "            Set mail = Nothing\n";
+        vba += "            On Error GoTo 0\n";
+        vba += "        Else\n";
+        vba += "            mail.Send\n";
+        vba += "            If Err.Number <> 0 Then\n";
+        vba += "                failCount = failCount + 1\n";
+        vba += "                failMsg = failMsg & \"Row \" & r & \": \" & Err.Description & vbCrLf\n";
+        vba += "                Err.Clear\n";
+        vba += "            Else\n";
+        vba += "                sentCount = sentCount + 1\n";
+        vba += "            End If\n";
+        vba += "            Set mail = Nothing\n";
+        vba += "            On Error GoTo 0\n";
+        vba += "        End If\n";
+        vba += "    Next r\n\n";
+        vba += "    xlWB.Close False\n";
+        vba += "    xlApp.Quit\n";
+        vba += "    Set xlWS = Nothing\n";
+        vba += "    Set xlWB = Nothing\n";
+        vba += "    Set xlApp = Nothing\n";
+        vba += "    Set fso = Nothing\n";
+        vba += "    Set wsh = Nothing\n\n";
+        vba += "    Dim msg As String\n";
+        vba += "    msg = \"=== Bulk Email Send Complete ===\" & vbCrLf & vbCrLf\n";
+        vba += "    msg = msg & \"Total: \" & (rowCount - 1) & vbCrLf\n";
+        vba += "    msg = msg & \"Sent: \" & sentCount & vbCrLf\n";
+        vba += "    msg = msg & \"Failed: \" & failCount\n";
+        vba += "    If failCount > 0 Then\n";
+        vba += "        msg = msg & vbCrLf & vbCrLf & \"Errors:\" & vbCrLf & failMsg\n";
+        vba += "        MsgBox msg, vbExclamation, \"Bulk Email Send\"\n";
+        vba += "    Else\n";
+        vba += "        MsgBox msg, vbInformation, \"Bulk Email Send\"\n";
+        vba += "    End If\n";
+        vba += "End Sub\n";
+
+        var blob = new Blob([vba], { type: 'text/plain' });
+        var url = URL.createObjectURL(blob);
+        var a = document.createElement('a');
+        a.href = url;
+        a.download = 'SendBulkEmails.bas';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+
+        showNotif('Exported BulkEmailList.xlsx + SendBulkEmails.bas downloaded. Now import macro into Outlook.', 'success');
+    };
+
+    drawTable();
+})();
+</script>
+</body>
+</html>
